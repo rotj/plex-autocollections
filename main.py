@@ -7,6 +7,8 @@ from plexapi.myplex import MyPlexAccount
 from plexapi.exceptions import BadRequest
 import yaml
 import glob, os, argparse
+from colorama import init
+init() # Support text coloring on Windows
 
 ## Edit ##
 PLEX_URL = os.getenv('PLEX_URL')
@@ -99,6 +101,22 @@ def process_movies(movies, medium, collection):
         for movie in matches:
             movie.addCollection(collection)
 
+def process_path(paths, medium, collection):
+    matches = []
+    for path in paths:
+        if isinstance(path, list):
+            process_path(path, medium, collection)
+        else:
+            regex = re.compile(re.escape(path), re.IGNORECASE) # Only matches against literal string from yml
+            for part in medium.iterParts():
+                if re.search(regex, part.file):
+                    print("Adding" + RED, medium.title, RESET_COLOR + "to collection" + BLUE, collection, RESET_COLOR)
+                    matches.append(medium)
+
+    if matches:
+        for movie in matches:
+            movie.addCollection(collection)
+
 def read_collection(filename, collections):
     if ((os.path.isfile(filename) > 0) and (os.path.getsize(filename) > 0)):
         with (open(filename, "r")) as stream:
@@ -140,8 +158,15 @@ def main():
     # keyword_matches = []  # unused list?
 
     for medium in plex.media:
-        for collection, movies in collections.items():
-            process_movies(movies, medium, collection)
+        for collection, items, in collections.items():
+            if(type(items) is list): # Assume list contains titles if collection has single level list
+                process_movies(items, medium, collection)
+            elif(type(items) is dict): # Choose processing method if collection has nested lists
+                for method, movies in items.items():
+                    if(method == "Title"):
+                        process_movies(movies, medium, collection)
+                    if(method == "Path"):
+                        process_path(movies, medium, collection)
 
 if __name__ == "__main__":
     main()
