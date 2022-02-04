@@ -117,6 +117,88 @@ def process_path(paths, medium, collection):
         for movie in matches:
             movie.addCollection(collection)
 
+def process_actor_title(movies, medium, actor, action, thumb, locked):
+    matches = []
+    for movie in movies:
+        if isinstance(movie, list):
+            process_movies(movie, medium, actor, action)
+        else:
+            year_regex = None
+            for match in re.findall(r"\{\{((?:\s?\d+\s?\|?)+)\}\}", movie):
+                year_regex = match.strip()
+                movie = re.sub(r"\s+\{\{((\s?\d+\s?\|?)+)\}\}", "", movie)
+
+            regex = re.compile(movie, re.IGNORECASE)
+            if re.search(regex, medium.title):
+                if year_regex and re.search(year_regex, str(medium.year)):
+                    if (action == "Add"):
+                        print("Adding actor" + GREEN, actor, RESET_COLOR + "to movie" + RED, medium.title, RESET_COLOR)
+                    elif (action == "Remove"):
+                        print("Removing actor" + GREEN, actor, RESET_COLOR + "from movie" + RED, medium.title, RESET_COLOR)
+                    matches.append(medium)
+                elif year_regex is None:
+                    if (action == "Add"):
+                        print("Adding actor" + GREEN, actor, RESET_COLOR + "to movie" + RED, medium.title, RESET_COLOR)
+                    elif (action == "Remove"):
+                        print("Removing actor" + GREEN, actor, RESET_COLOR + "from movie" + RED, medium.title, RESET_COLOR)
+                    matches.append(medium)
+
+    if matches:
+        for movie in matches:
+            if (action == "Add"):
+                movie._edit_tags(tag="actor", items=[actor], locked=locked)
+            elif (action == "Remove"):
+                movie._edit_tags(tag="actor", items=[actor], locked=locked, remove=True)
+        if (thumb and action == "Add"):
+            edits = {
+                'actor[0].tag.tag': ''+actor+'',
+                'actor[0].tag.thumb': thumb
+            }
+            movie.edit(**edits)
+
+def process_actor_path(paths, medium, actor, action, thumb, locked, exclude):
+    matches = []
+    for path in paths:
+        if isinstance(path, list):
+            process_path(path, medium, actor)
+        else:
+            skip = False
+            for movie in exclude:
+                year_regex = None
+                for match in re.findall(r"\{\{((?:\s?\d+\s?\|?)+)\}\}", movie):
+                    year_regex = match.strip()
+                    movie = re.sub(r"\s+\{\{((\s?\d+\s?\|?)+)\}\}", "", movie)
+                exclude_regex = re.compile(movie, re.IGNORECASE)
+                if re.search(exclude_regex, medium.title):
+                    if year_regex and re.search(year_regex, str(medium.year)):
+                        skip = True
+                        continue
+                    elif year_regex is None:
+                        skip = True
+                        continue
+            if(not skip):
+                regex = re.compile(re.escape(path), re.IGNORECASE) # Only matches against literal string from yml
+                for part in medium.iterParts():
+                    if re.search(regex, part.file):
+                        if (action == "Add"):
+                            print("Adding actor" + GREEN, actor, RESET_COLOR + "to movie" + RED, medium.title, RESET_COLOR)
+                        elif (action == "Remove"):
+                            print("Removing actor" + GREEN, actor, RESET_COLOR + "from movie" + RED, medium.title, RESET_COLOR)
+                        matches.append(medium)
+
+    if matches:
+        for movie in matches:
+            if (action == "Add"):
+                movie._edit_tags(tag="actor", items=[actor], locked=locked)
+            elif (action == "Remove"):
+                movie._edit_tags(tag="actor", items=[actor], locked=locked, remove=True)
+        if (thumb and action == "Add"):
+            edits = {
+                'actor[0].tag.tag': ''+actor+'',
+                'actor[0].tag.thumb': thumb
+            }
+            movie.edit(**edits)
+
 def read_collection(filename, collections):
     if ((os.path.isfile(filename) > 0) and (os.path.getsize(filename) > 0)):
         with (open(filename, "r")) as stream:
@@ -144,6 +226,7 @@ def main():
 
     print()
     collections = {}        # create empty dictionary
+    actors = {}        # create empty dictionary
 
     if args.collection:
         for i in range(len(args.collection)):
@@ -151,22 +234,51 @@ def main():
     else:
         read_collection('collections.yml', collections)
         custom_collections = glob.glob('collections.d/*.yml')
+        custom_actors = glob.glob('actors.d/*.yml')
         for custom_collection in custom_collections:
             read_collection(custom_collection, collections)
+        for custom_actor in custom_actors:
+            read_collection(custom_actor, actors)
 
     print()
     # keyword_matches = []  # unused list?
 
     for medium in plex.media:
         for collection, items, in collections.items():
-            if(type(items) is list): # Assume list contains titles if collection has single level list
+            if (type(items) is list): # Assume list contains titles if collection has single level list
                 process_movies(items, medium, collection)
-            elif(type(items) is dict): # Choose processing method if collection has nested lists
+            elif (type(items) is dict): # Choose processing method if collection has nested lists
                 for method, movies in items.items():
-                    if(method == "Title"):
+                    if (method == "Title"):
                         process_movies(movies, medium, collection)
-                    if(method == "Path"):
+                    if (method == "Path"):
                         process_path(movies, medium, collection)
+
+        for actor, items, in actors.items():
+            if (type(items) is list): # Assume list contains titles if collection has single level list
+                process_actor_title(items, medium, actor)
+            elif (type(items) is dict): # Choose processing method if collection has nested lists
+                if (items.get("Action")):
+                    action = items.get("Action")
+                else:
+                    action = "Add"
+                if (items.get("Thumb")):
+                    thumb = items.get("Thumb")
+                else:
+                    thumb = None
+                if (items.get("Locked") == False):
+                    locked = False
+                else:
+                    locked = True
+                if (type(items.get("Exclude")) is list):
+                    exclude = items.get("Exclude")
+                else:
+                    exclude = []
+                for method, movies in items.items():
+                    if (method == "Title"):
+                        process_actor_title(movies, medium, actor, action, thumb, locked)
+                    if (method == "Path"):
+                        process_actor_path(movies, medium, actor, action, thumb, locked, exclude)
 
 if __name__ == "__main__":
     main()
