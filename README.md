@@ -1,7 +1,12 @@
-# Plex Auto-Collections
+# Plex Auto-Collections-and-Actors
+This script is a fork of [plex-autocollections]https://github.com/alex-phillips/plex-autocollections with support for adding actors to Plex movies.
+
 This is a simple script to automatically create collections by matching the titles of movies in your library with movies in the `collections.yml` file or a custom collections file.
 
-This script was originally based off of an inspired by [this script](https://github.com/AustinHasten/PlexHolidays), so thanks to [AustinHasten](https://github.com/AustinHasten) for that!
+This script can also add actors from YAML files in the `actors.d` directory.
+
+## WARNING
+Adding actors is designed for libraries with no or poor matching against metadata agents. By default, the script will lock the actors metadata to prevent a metadata refresh from clearing it. Since actors are not editable from the Plex UI, you will need to use this script again to remove or unlock actors. Only the Movies and Other Videos library types are supported. See the configuration section for instructions.
 
 ## Installation
 Simply use pip to install the requirements and run the software with python 3.
@@ -19,6 +24,41 @@ python3 main.py
 It will ask you for your Plex login and automatically find your servers. If it looks like more than one library may contain movies, it will ask you which one you want to create collections on. This also uses the standard [PlexAPI](https://pypi.org/project/PlexAPI/) standard config options of reading authentication information from the plexapi config file.
 
 You can also set the environment variables `PLEX_URL` and `PLEX_TOKEN` for authentication.
+
+### Actor Files
+
+Files contained in the `actors.d` directory ending with the suffix `.yml` will be scanned for actors.
+
+File convention:
+```
+Hitoshi Matsumoto:
+  Path:
+    - Mainline GnT
+    - Batsu Games
+  Title:
+    - Matsumotoke Cup Mistake
+  Thumb: https://www.themoviedb.org/t/p/w600_and_h900_bestv2/Iq03j6VtB9V1wtq8fvGNEcmW9.jpg
+```
+
+Each actor mapping should start with the name: `Hitoshi Matsumoto:`.
+
+Matches can be against the file path (including file name), `Path:`, or Plex title, `Title:`.
+
+To exclude paths and titles from `Path:` matching, use `Exclude Path:` and `Exclude Title:`.
+
+Thumbnails can be included from a URL using `Thumb:`.
+
+By default, actors are locked similar to clicking the lock icon in the Plex editor to prevent a metadata refresh from overwriting them. This behavior can be changed by adding `Locked: False`.
+
+To remove an actor from movies, use `Action: Remove`.
+
+```
+Hitoshi Matsumoto:
+  Title:
+    - Wrong Video
+  Action: Remove
+  Locked: False
+```
 
 ### Collection Files
 
