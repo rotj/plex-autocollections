@@ -1,5 +1,5 @@
 # Plex Auto-Collections-and-Actors
-This script is a fork of [plex-autocollections]https://github.com/alex-phillips/plex-autocollections with support for adding actors to Plex movies.
+This script is a fork of [plex-autocollections](https://github.com/alex-phillips/plex-autocollections) with support for adding actors to Plex movies.
 
 This is a simple script to automatically create collections by matching the titles of movies in your library with movies in the `collections.yml` file or a custom collections file.
 
