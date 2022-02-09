@@ -44,6 +44,8 @@ Each actor mapping should start with the name: `Hitoshi Matsumoto:`.
 
 Matches can be against the file path (including file name), `Path:`, or Plex title, `Title:`.
 
+Paths use a literal match by default. To enable regex matching, set `Path Regex: True`.
+
 To exclude paths and titles from `Path:` matching, use `Exclude Path:` and `Exclude Title:`.
 
 Thumbnails can be included from a URL using `Thumb:`.
