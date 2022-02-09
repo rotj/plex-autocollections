@@ -91,9 +91,21 @@ def process_movies(movies, medium, collection):
             regex = re.compile(movie, re.IGNORECASE)
             if re.search(regex, medium.title):
                 if year_regex and re.search(year_regex, str(medium.year)):
+                    hasCollection = False
+                    for tag in medium.collections:
+                        if tag.tag == collection:
+                            hasCollection = True
+                    if hasCollection == True:
+                        continue
                     print("Adding" + RED, medium.title, RESET_COLOR + "to collection" + BLUE, collection, RESET_COLOR)
                     matches.append(medium)
                 elif year_regex is None:
+                    hasCollection = False
+                    for tag in medium.collections:
+                        if tag.tag == collection:
+                            hasCollection = True
+                    if hasCollection == True:
+                        continue
                     print("Adding" + RED, medium.title, RESET_COLOR + "to collection" + BLUE, collection, RESET_COLOR)
                     matches.append(medium)
 
@@ -110,6 +122,12 @@ def process_path(paths, medium, collection):
             regex = re.compile(re.escape(path), re.IGNORECASE) # Only matches against literal string from yml
             for part in medium.iterParts():
                 if re.search(regex, part.file):
+                    hasCollection = False
+                    for tag in medium.collections:
+                        if tag.tag == collection:
+                            hasCollection = True
+                    if hasCollection == True:
+                        continue
                     print("Adding" + RED, medium.title, RESET_COLOR + "to collection" + BLUE, collection, RESET_COLOR)
                     matches.append(medium)
 
@@ -132,12 +150,24 @@ def process_actor_title(movies, medium, actor, action, thumb, locked):
             if re.search(regex, medium.title):
                 if year_regex and re.search(year_regex, str(medium.year)):
                     if (action == "Add"):
+                        hasActor = False
+                        for role in medium.roles:
+                            if role.tag == actor:
+                                hasActor = True
+                        if hasActor == True: #skip if actor already exists
+                            continue
                         print("Adding actor" + GREEN, actor, RESET_COLOR + "to movie" + RED, medium.title, RESET_COLOR)
                     elif (action == "Remove"):
                         print("Removing actor" + GREEN, actor, RESET_COLOR + "from movie" + RED, medium.title, RESET_COLOR)
                     matches.append(medium)
                 elif year_regex is None:
                     if (action == "Add"):
+                        hasActor = False
+                        for role in medium.roles:
+                            if role.tag == actor:
+                                hasActor = True
+                        if hasActor == True: #skip if actor already exists
+                            continue
                         print("Adding actor" + GREEN, actor, RESET_COLOR + "to movie" + RED, medium.title, RESET_COLOR)
                     elif (action == "Remove"):
                         print("Removing actor" + GREEN, actor, RESET_COLOR + "from movie" + RED, medium.title, RESET_COLOR)
@@ -156,14 +186,14 @@ def process_actor_title(movies, medium, actor, action, thumb, locked):
             }
             movie.edit(**edits)
 
-def process_actor_path(paths, medium, actor, action, thumb, locked, exclude):
+def process_actor_path(paths, medium, actor, action, thumb, locked, exclude_title, exclude_path, path_regex):
     matches = []
     for path in paths:
         if isinstance(path, list):
             process_path(path, medium, actor)
         else:
             skip = False
-            for movie in exclude:
+            for movie in exclude_title:
                 year_regex = None
                 for match in re.findall(r"\{\{((?:\s?\d+\s?\|?)+)\}\}", movie):
                     year_regex = match.strip()
@@ -176,11 +206,33 @@ def process_actor_path(paths, medium, actor, action, thumb, locked, exclude):
                     elif year_regex is None:
                         skip = True
                         continue
+
+            for xpath in exclude_path:
+                if (path_regex):
+                    path_string = xpath
+                else:
+                    path_string = re.escape(xpath) # Only matches against literal string from yml
+                exclude_regex = re.compile(path_string, re.IGNORECASE) 
+                for part in medium.iterParts():
+                    if re.search(exclude_regex, part.file):
+                        skip = True
+                        continue
+
             if(not skip):
-                regex = re.compile(re.escape(path), re.IGNORECASE) # Only matches against literal string from yml
+                if (path_regex):
+                    path_string = path
+                else:
+                    path_string = re.escape(path) # Only matches against literal string from yml
+                regex = re.compile(path_string, re.IGNORECASE) 
                 for part in medium.iterParts():
                     if re.search(regex, part.file):
                         if (action == "Add"):
+                            hasActor = False
+                            for role in medium.roles:
+                                if role.tag == actor:
+                                    hasActor = True
+                            if hasActor == True: #skip if actor already exists
+                                continue
                             print("Adding actor" + GREEN, actor, RESET_COLOR + "to movie" + RED, medium.title, RESET_COLOR)
                         elif (action == "Remove"):
                             print("Removing actor" + GREEN, actor, RESET_COLOR + "from movie" + RED, medium.title, RESET_COLOR)
@@ -219,12 +271,6 @@ def main():
     parser.add_argument("collection", nargs="*", help="Collection YAML files to process")
     args = parser.parse_args()
 
-    if args.library:
-        plex = Plex(args.library)
-    else:
-        plex = Plex()
-
-    print()
     collections = {}        # create empty dictionary
     actors = {}        # create empty dictionary
 
@@ -239,8 +285,15 @@ def main():
             read_collection(custom_collection, collections)
         for custom_actor in custom_actors:
             read_collection(custom_actor, actors)
+    print()
+    
+    if args.library:
+        plex = Plex(args.library)
+    else:
+        plex = Plex()
 
     print()
+
     # keyword_matches = []  # unused list?
 
     for medium in plex.media:
@@ -270,15 +323,24 @@ def main():
                     locked = False
                 else:
                     locked = True
-                if (type(items.get("Exclude")) is list):
-                    exclude = items.get("Exclude")
+                if (type(items.get("Exclude Title")) is list):
+                    exclude_title = items.get("Exclude Title")
                 else:
-                    exclude = []
+                    exclude_title = []
+                if (type(items.get("Exclude Path")) is list):
+                    exclude_path = items.get("Exclude Path")
+                else:
+                    exclude_path = []
+                if (items.get("Path Regex") == True):
+                    path_regex = True
+                else:
+                    path_regex = False
+
                 for method, movies in items.items():
                     if (method == "Title"):
                         process_actor_title(movies, medium, actor, action, thumb, locked)
                     if (method == "Path"):
-                        process_actor_path(movies, medium, actor, action, thumb, locked, exclude)
+                        process_actor_path(movies, medium, actor, action, thumb, locked, exclude_title, exclude_path, path_regex)
 
 if __name__ == "__main__":
     main()
