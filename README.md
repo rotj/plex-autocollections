@@ -6,7 +6,7 @@ This is a simple script to automatically create collections by matching the titl
 This script can also add actors from YAML files in the `actors.d` directory.
 
 ## WARNING
-Adding actors is designed for libraries with no or poor matching against metadata agents. By default, the script will lock the actors metadata to prevent a metadata refresh from clearing it. Since actors are not editable from the Plex UI, you will need to use this script again to remove or unlock actors. Only the Movies and Other Videos library types are supported. See the configuration section for instructions.
+Adding actors is designed for libraries with no or poor matching against metadata agents. By default, the script will lock the actors metadata to prevent a metadata refresh from clearing it. Since actors are not editable from the Plex UI, you will need to use this script again to remove or unlock actors. Only the Movies and Other Videos library types are supported. See the Usage section for instructions.
 
 ## Installation
 Simply use pip to install the requirements and run the software with python 3.
